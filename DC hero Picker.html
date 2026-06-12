@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DC Deckbuilding — MC Picker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #161a24;
+    --surface2:  #1e2433;
+    --border:    #2a3045;
+    --border2:   #3a4460;
+    --text:      #e8ecf4;
+    --muted:     #8892aa;
+    --faint:     #4a5470;
+
+    --t1: #1e6b4a; --t1bg: #0d2b1e; --t1bd: #1e6b4a;
+    --t2: #1a5fa8; --t2bg: #0b2340; --t2bd: #1a5fa8;
+    --t3: #5c3fb5; --t3bg: #1e1440; --t3bd: #5c3fb5;
+    --t4: #a06010; --t4bg: #3a200a; --t4bd: #a06010;
+    --t5: #b03020; --t5bg: #3a100a; --t5bd: #b03020;
+    --t6: #c41a1a; --t6bg: #3d0808; --t6bd: #c41a1a;
+
+    --hero-bg: #0b2340; --hero-text: #5ba3f5;
+    --villain-bg: #3d0808; --villain-text: #f07070;
+
+    --gold: #e8b84b;
+    --accent: #e8b84b;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    color: var(--gold);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .logo span { color: var(--text); font-weight: 400; }
+
+  /* ── BUDGET BAR ── */
+  .budget-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .budget-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .budget-track {
+    flex: 1;
+    max-width: 240px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .budget-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease, background 0.3s ease;
+    background: var(--t1);
+  }
+
+  .budget-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    min-width: 48px;
+    text-align: right;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: var(--surface2); color: var(--text); border-color: var(--text); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn:disabled:hover { background: transparent; color: var(--muted); border-color: var(--border2); }
+
+  .btn-export {
+    background: var(--gold);
+    color: #0d0f14;
+    border-color: var(--gold);
+    font-weight: 900;
+  }
+  .btn-export:hover { background: #f5cb6a; border-color: #f5cb6a; color: #0d0f14; }
+  .btn-export:disabled { background: transparent; color: var(--muted); border-color: var(--border2); }
+
+  .btn-danger { color: #f07070; border-color: #7a2020; }
+  .btn-danger:hover { background: #3d0808; color: #f07070; border-color: #f07070; }
+
+  /* ── SELECTED CHIPS ── */
+  .selected-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 2rem;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px 12px;
+    border-radius: 3px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    border: 1px solid;
+  }
+
+  .chip:hover { opacity: 0.7; }
+
+  .chip-remove {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-left: 2px;
+  }
+
+  .empty-msg {
+    font-size: 13px;
+    color: var(--faint);
+    font-style: italic;
+  }
+
+  /* ── EXPORT PANEL ── */
+  .export-panel {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+  }
+
+  .export-panel-inner {
+    max-width: 800px;
+  }
+
+  .export-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+
+  .export-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .export-actions { display: flex; gap: 8px; }
+
+  .export-textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 1rem;
+    resize: vertical;
+    min-height: 220px;
+    outline: none;
+  }
+
+  .export-textarea:focus { border-color: var(--gold); }
+
+  .btn-copy-success { color: #4caf7d !important; border-color: #4caf7d !important; }
+
+  /* ── FILTERS ── */
+  .filters {
+    padding: 1rem 2rem;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 71px;
+    z-index: 90;
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 360px;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--faint);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    padding: 7px 10px 7px 32px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-input::placeholder { color: var(--faint); }
+  .search-input:focus { border-color: var(--border2); }
+
+  .filter-btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+  .filter-btn.active { background: var(--gold); color: #0d0f14; border-color: var(--gold); }
+
+  /* ── MAIN CONTENT ── */
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* ── TIER SECTION ── */
+  .tier-section { margin-bottom: 2.5rem; }
+
+  .tier-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+  }
+
+  .tier-pill {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 12px;
+    border-radius: 2px;
+    border: 1px solid;
+  }
+
+  .tier-rule {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .tier-count {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    color: var(--faint);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── CARD GRID ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  .mc-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mc-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--border);
+    transition: background 0.15s;
+  }
+
+  .mc-card:hover:not(.disabled) {
+    border-color: var(--border2);
+    background: var(--surface2);
+    transform: translateY(-1px);
+  }
+
+  .mc-card:hover:not(.disabled)::before { background: var(--gold); }
+
+  .mc-card.selected {
+    border-color: var(--selected-color, var(--gold));
+    background: var(--selected-bg, var(--surface2));
+    transform: none;
+  }
+
+  .mc-card.selected::before { background: var(--selected-color, var(--gold)); }
+
+  .mc-card.disabled {
+    opacity: 0.28;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .mc-card.disabled::before { background: transparent; }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .mc-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .mc-set {
+    font-size: 11px;
+    color: var(--faint);
+    margin-bottom: 8px;
+    margin-top: 2px;
+  }
+
+  .mc-type-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 2px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .mc-effect {
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-top: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .selected-check {
+    display: none;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--selected-color, var(--gold));
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: #0d0f14;
+    font-weight: 900;
+  }
+
+  .mc-card.selected .selected-check { display: flex; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--faint);
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 700px) {
+    header { padding: 0.75rem 1rem; flex-wrap: wrap; gap: 0.75rem; }
+    .filters { padding: 0.75rem 1rem; top: auto; position: relative; }
+    main { padding: 1rem; }
+    .selected-bar { padding: 0.75rem 1rem; }
+    .logo { font-size: 17px; }
+    .budget-track { max-width: 120px; }
+    .export-panel { padding: 1rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mc-card, .budget-fill { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">DC Deckbuilding <span>/ MC Picker</span></div>
+  <div class="budget-wrap">
+    <span class="budget-label">Tier budget</span>
+    <div class="budget-track">
+      <div class="budget-fill" id="budget-fill"></div>
+    </div>
+    <span class="budget-num" id="budget-num">0 / 6</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-danger" id="clear-btn" onclick="clearAll()" disabled>Clear</button>
+    <button class="btn btn-export" id="export-btn" onclick="toggleExport()" disabled>Export ↗</button>
+  </div>
+</header>
+
+<!-- SELECTED CHIPS -->
+<div class="selected-bar" id="selected-bar">
+  <span class="empty-msg">No characters selected — choose characters until you reach tier 6.</span>
+</div>
+
+<!-- EXPORT PANEL -->
+<div class="export-panel" id="export-panel" style="display:none">
+  <div class="export-panel-inner">
+    <div class="export-header">
+      <span class="export-title">Your selection</span>
+      <div class="export-actions">
+        <button class="btn" id="copy-btn" onclick="copyText()">Copy to clipboard</button>
+        <button class="btn" onclick="downloadText()">Download .txt</button>
+        <button class="btn" onclick="toggleExport()">Close</button>
+      </div>
+    </div>
+    <textarea class="export-textarea" id="export-text" readonly></textarea>
+  </div>
+</div>
+
+<!-- FILTERS -->
+<div class="filters">
+  <div class="search-wrap">
+    <span class="search-icon">&#128269;</span>
+    <input class="search-input" id="search" type="text" placeholder="Search name, set, or effect…" oninput="render()" />
+  </div>
+  <button class="filter-btn active" id="f-all" onclick="setFilter('all')">All</button>
+  <button class="filter-btn" id="f-hero" onclick="setFilter('hero')">Heroes</button>
+  <button class="filter-btn" id="f-villain" onclick="setFilter('villain')">Villains</button>
+</div>
+
+<!-- MAIN -->
+<main id="main-content"></main>
+
+<footer>
+  DC Deckbuilding Game · Fan-made reference tool · Not affiliated with Cryptozoic Entertainment
+</footer>
+
+<script>
+const TIER_COLORS = {
+  1:{color:'#2ab07a', bg:'#0d2b1e', border:'#1e6b4a'},
+  2:{color:'#4d9ef5', bg:'#0b2340', border:'#1a5fa8'},
+  3:{color:'#8b6fd4', bg:'#1e1440', border:'#5c3fb5'},
+  4:{color:'#d4882a', bg:'#3a200a', border:'#a06010'},
+  5:{color:'#e05540', bg:'#3a100a', border:'#b03020'},
+  6:{color:'#f54040', bg:'#3d0808', border:'#c41a1a'},
+};
+
+const DATA = [
+  {tier:1,name:"Aquaman",type:"Super-Hero",set:"Rebirth",effect:"Each time you play a Super Power during your turn, target player may put a card with cost 4 or less from their discard pile on the bottom of their deck."},
+  {tier:1,name:"Aquaman, Crisis",type:"Super-Hero",set:"Crisis 5",effect:"Once per each of your turns: If you played 2 or more Super Powers and/or Equipment this turn, each Ally may reveal the top card of their deck."},
+  {tier:1,name:"Bane",type:"Super-Villain",set:"Shadows",effect:"Each time you play a Weakness, +1 Power and you may look at the top card of your deck. If you do, discard it or return it."},
+  {tier:1,name:"Batman, Crisis",type:"Super-Hero",set:"Crisis 5",effect:"Once per each of your turns: If you control a Weakness, you may play a card with cost 5 or less from the destroyed pile."},
+  {tier:1,name:"Batman [Earth -32]",type:"Super-Villain",set:"Crossover 11",effect:"Each time you play a Weakness, you may put a card with cost 7 or less from your hand or discard pile on the top of your deck."},
+  {tier:1,name:"Batman [Earth 01]",type:"Super-Villain",set:"Crossover 11",effect:"Once per each of your turns: If you control a Weakness, you may draw a card, if you do, discard a card."},
+  {tier:1,name:"Batwoman",type:"Super-Hero",set:"Crossover 6",effect:"You pay 1 less to buy cards in the Line-Up with the same card type as rotated cards you control."},
+  {tier:1,name:"Billy Batson//SHAZAM!",type:"Super-Hero",set:"Rebirth 0S3",effect:"You do not stop Villain movement and cannot be attacked. Start of your turn: You may discard a Super Power. If you do, flip this card."},
+  {tier:1,name:"Black Adam (Cost 9)",type:"Super-Villain",set:"Kickstarter Rivals 4",effect:"The first time you gain a card with cost 5 or greater each turn, you may destroy a Vulnerability or Weakness you control."},
+  {tier:1,name:"Black Canary",type:"Super-Hero",set:"Crossover 2",effect:"When you buy or gain a Villain from the Line-Up, you may put it under your Super Hero."},
+  {tier:1,name:"Black Canary",type:"Super-Hero",set:"Crossover 6",effect:"Once per each of your turns: If you control two or more different Super Powers, rotate a card you control 90 degrees clockwise."},
+  {tier:1,name:"Catwoman",type:"Super-Hero",set:"Crossover 6",effect:"Once per each of your turns: If you control four or more rotated cards, gain the top card of the main deck."},
+  {tier:1,name:"Catwoman",type:"Super-Hero",set:"Hush",effect:"Once per each of your turns: if you played 2 or more cards with cost 5 or greater this turn, Investigate."},
+  {tier:1,name:"Circe (Cost 15)",type:"Super-Villain",set:"Confrontations",effect:"Once during each player's turn a Confrontation card in your hand has Assist."},
+  {tier:1,name:"Constantine",type:"Super-Hero",set:"Crisis 1",effect:"Once per each of your turns: Reveal the top card of your deck. If its cost is 1 or greater, you may play it and it has +1 power."},
+  {tier:1,name:"Doctor Fate",type:"Super-Hero",set:"JLD",effect:"The first time you Seal a card each turn, draw a card."},
+  {tier:1,name:"Flashpoint, The Flash",type:"Super-Hero",set:"Crossover 10",effect:"After a card tells you to draw 1 or more cards, you may also put a card from your discard pile on the bottom of your deck."},
+  {tier:1,name:"Green Lantern (Cost 9)",type:"Super-Hero",set:"Rivals 2",effect:"Once per each of your turns: If you control a Hero and a Construct, you may destroy a card in your hand."},
+  {tier:1,name:"Green Lantern (Cost 12)",type:"Super-Hero",set:"Rivals 2",effect:"Once per each of your turns: If you control a Hero and a Construct, draw 2 cards, and then discard a card."},
+  {tier:1,name:"Injustice, Green Arrow",type:"Super-Hero",set:"Injustice",effect:"The first time you play an Equipment each turn, charge your Meter and reveal the top card of your deck."},
+  {tier:1,name:"Injustice, Superman",type:"Super-Villain",set:"Injustice",effect:"The first time you play a Super Power each turn charge your Meter and +1 Power."},
+  {tier:1,name:"Injustice, The Flash",type:"Super-Hero",set:"Injustice",effect:"When you are attacked for the first time each turn, you may discard a card. If you do, draw a card."},
+  {tier:1,name:"Injustice, Wonder Woman",type:"Super-Villain",set:"Injustice",effect:"Each time you play an Attack card with cost 4 or greater, charge your Meter."},
+  {tier:1,name:"Jay Garrick",type:"Super-Hero",set:"Crossover 1",effect:"When a card tells you to draw 1 or more cards, before drawing, reveal the top card of your deck and you may discard it."},
+  {tier:1,name:"John Diggle",type:"Super-Hero",set:"Crossover 2",effect:"When you use a Defense card to avoid an Attack, you may put that Defense card under your Super Hero."},
+  {tier:1,name:"Katana",type:"Super-Hero",set:"Crossover 6",effect:"Once per each of your turns: If you control two or more Equipment, you may destroy a Starter in your hand."},
+  {tier:1,name:"Kid Flash",type:"Super-Hero",set:"Promo",effect:"Whenever you buy or gain a card, you may add the top card of the main deck to the Line-Up."},
+  {tier:1,name:"Krypto",type:"Super-Hero",set:"Promo",effect:"Each time you discard a card from your hand or that you control, look at the top or bottom card of your deck."},
+  {tier:1,name:"Kyle Rayner",type:"Super-Hero",set:"Crisis 2",effect:"At the start of your turn, you may reveal three cards with different colors from your hand; if you do, discard your hand and draw five cards."},
+  {tier:1,name:"Lex Luthor (Cost 9)",type:"Super-Villain",set:"Rivals 5",effect:"Once per each of your turns: If you gained and/or played a Villain and Equipment this turn, you may destroy a card in your hand."},
+  {tier:1,name:"Lex Luthor (Cost 9)",type:"Super-Villain",set:"Confrontations",effect:"Discard a non-Starter Assist card: Draw two cards. Use only once per turn."},
+  {tier:1,name:"Lex Luthor (Cost 15)",type:"Super-Villain",set:"Confrontations",effect:"Confrontation: Draw a card for each non-Starter Assist card you play this turn."},
+  {tier:1,name:"Lightning Lad",type:"Super-Hero",set:"Crossover 3",effect:"During each of your turns, if the first card you play from your hand is a Villain, give a card with cost 4 or less in the Line-Up Time Travel this turn."},
+  {tier:1,name:"Mister Terrific, Crisis",type:"Super-Hero",set:"XC1",effect:"When any player is attacked, you may discard an Equipment to have that player avoid the Attack."},
+  {tier:1,name:"Nite Owl",type:"Super-Hero",set:"Crossover 4",effect:"Each time you play an Equipment during your turn, you may put a card from your discard pile on the bottom of your deck."},
+  {tier:1,name:"Oracle",type:"Super-Hero",set:"Crossover 6",effect:"Once per each of your turns: If you control two or more Heroes, draw a card and rotate a card you control 90 degrees clockwise."},
+  {tier:1,name:"Phantom Girl",type:"Super-Hero",set:"Crossover 3",effect:"1 Power for each Time Travel card you play during your turn."},
+  {tier:1,name:"Poison Ivy",type:"Super-Villain",set:"Arkham",effect:"Each time you play an Ongoing card, you may put a card with cost 0 from your discard pile into your hand."},
+  {tier:1,name:"Poison Ivy",type:"Super-Villain",set:"Crisis 3",effect:"The first time you play an Ongoing or a non-Kick Super Power during each of your turns, reveal the top card of your deck."},
+  {tier:1,name:"Power Girl, Crisis",type:"Super-Hero",set:"XC1",effect:"Once per each of your turns: If you played 2 or more different Super Powers this turn, choose a player to destroy a Vulnerability or Weakness in their hand."},
+  {tier:1,name:"Ra's Al Ghul",type:"Super-Villain",set:"Shadows",effect:"The first time you play an Ongoing card each turn, reveal the top card of your deck."},
+  {tier:1,name:"Robin",type:"Super-Hero",set:"Crisis 1",effect:"The first time a card tells you to draw a card during each of your turns, you may instead put an Equipment from your discard pile into your hand."},
+  {tier:1,name:"Saturn Girl",type:"Super-Hero",set:"Crossover 3",effect:"During each of your turns, if the first card you play from your hand is a Hero, give a card with cost 4 or less in the Line-Up Time Travel this turn."},
+  {tier:1,name:"Silk Specter",type:"Super-Hero",set:"Crossover 4",effect:"Each time you play a Hero during your turn, look at the top card of your deck. You may discard it."},
+  {tier:1,name:"Sinestro (Cost 9)",type:"Super-Villain",set:"Rivals 2",effect:"Once per each of your turns: If you control a Villain and a Construct, Attack: Each foe discards a card."},
+  {tier:1,name:"Solomon Grundy",type:"Super-Villain",set:"JLDX",effect:"Discard a card: Put a Hero or Villain with cost 5 or less from your discard pile on the bottom of your deck."},
+  {tier:1,name:"Starfire",type:"Super-Hero",set:"Teen Titans Go",effect:"Once per each of your turns: If you control a Hero and a Super Power, you may destroy a card in your hand."},
+  {tier:1,name:"Starfire, Crisis",type:"Super-Hero",set:"Crisis 4",effect:"Once per each of your turns: If you control 4 or more different card types, choose a player. That player may destroy a card in their hand."},
+  {tier:1,name:"Star Sapphire",type:"Super-Hero",set:"Crisis 2",effect:"When you play an Equipment, reveal the top card of your deck. You may discard it or put it on the bottom of your deck."},
+  {tier:1,name:"Superman",type:"Super-Hero",set:"DNM",effect:"It requires 3 Weakness cards for your character to become Captured. Each time you play a Weakness, +1 Power."},
+  {tier:1,name:"Superman (Cost 12)",type:"Super-Hero",set:"Confrontations",effect:"At the start of each of your turns, if you have fewer than 5 cards in your hand, draw a card."},
+  {tier:1,name:"Superman, Crisis",type:"Super-Hero",set:"Crisis 1",effect:"Once per each of your turns: if you play 7 or greater cost worth of Super Powers, choose a player. That player draws a card."},
+  {tier:1,name:"Tempest",type:"Super-Hero",set:"Crisis 4",effect:"Each time you play an Ongoing card, you may put a card with cost 5 or less from your discard pile on top of your deck."},
+  {tier:1,name:"The Flash (Jay Garrick)",type:"Super-Hero",set:"XC1",effect:"Each time you draw 1 or more cards, you may reveal the top of another player's deck. Discard or return it."},
+  {tier:1,name:"Zatanna Zatara (Cost 15)",type:"Super-Hero",set:"Confrontations",effect:"You may look at the top card of your deck at any time. Each time you or your ally plays a Hero during a Confrontation, you may discard the top card of your deck."},
+  {tier:2,name:"Allan Scott",type:"Super-Hero",set:"Crossover 1",effect:"Each time you play a different Super Power during your turn, reveal the top card of your deck. If the revealed card costs 0, draw it."},
+  {tier:2,name:"Bane, Crisis",type:"Super-Villain",set:"Crisis 3",effect:"Each time you destroy a card with cost 1 or greater a player owns, you may place it under this card. These cards may be used to beat Crisis cards."},
+  {tier:2,name:"Batgirl",type:"Super-Hero",set:"Heroes Unite",effect:"Once per each of your turns: You may discard a Punch. If you do, draw a card."},
+  {tier:2,name:"Batman",type:"Super-Hero",set:"DNM",effect:"Each time you play a Weakness, look at the top card of your deck. Destroy it or leave it."},
+  {tier:2,name:"Batman",type:"Super-Hero",set:"Shadows",effect:"Once per each of your turns: You may put a card with cost less than the number of different card types among cards you control from your discard pile on top of your deck."},
+  {tier:2,name:"Batman (Cost 9)",type:"Super-Hero",set:"Rivals 1",effect:"At the end of your turn, draw an extra card if you bought or gained one or more Equipment from the Line-Up during your turn."},
+  {tier:2,name:"Batman (Cost 12)",type:"Super-Hero",set:"Rivals 1",effect:"Once per each of your turns: If you play a Hero and an Equipment, play a non-Location card from the Line-Up, and then return it."},
+  {tier:2,name:"Batman [Earth -44]",type:"Super-Villain",set:"Crossover 11",effect:"Once per each of your turns: if you control 2 or more Villains and/or Equipment, you may destroy a Starter in your discard pile."},
+  {tier:2,name:"Batman [Earth -12]",type:"Super-Villain",set:"Crossover 11",effect:"Once per each of your turns: You pay 1 less to buy a Defense or Attack card."},
+  {tier:2,name:"Batman [Earth -11]",type:"Super-Villain",set:"Crossover 11",effect:"Once per each of your turns: If you control 2 or more Heroes and/or different Super Powers, look at the top 2 cards of your deck. Draw one and discard the other."},
+  {tier:2,name:"Beast Boy",type:"Super-Hero",set:"Teen Titans",effect:"Once per each of your turns: you may discard a card. If you do, put a non-Starter with that card type and cost 6 or less from your discard pile into your hand."},
+  {tier:2,name:"Big Barda",type:"Super-Hero",set:"Crossover 7",effect:"The third time you play a card with cost 5 or greater during your turn, double your current Power."},
+  {tier:2,name:"Black Adam (Cost 12)",type:"Super-Villain",set:"Kickstarter Rivals 4",effect:"Discard a Villain or Super Power: Reveal the top 3 cards of your deck, draw a revealed card with cost 5 or greater."},
+  {tier:2,name:"Black Lightning",type:"Super-Hero",set:"Promo",effect:"Discard X cards: Put a card with cost X from your discard pile into your hand. (X cannot equal 0)"},
+  {tier:2,name:"Black Manta",type:"Super-Villain",set:"Forever Evil",effect:"You may put any cards you buy or gain from the Line-Up on the bottom of your deck."},
+  {tier:2,name:"Blue Beetle",type:"Super-Hero",set:"Teen Titans",effect:"Once per each of your turns: If you control seven or more cards, draw a card."},
+  {tier:2,name:"Brainiac 5",type:"Super-Hero",set:"Crossover 3",effect:"Once per each of your turns: You may discard 2 cards. If you do, put a card with cost 5 or a Time Travel card from your discard pile into your hand."},
+  {tier:2,name:"Captain Boomerang",type:"Super-Villain",set:"Crisis 3",effect:"At the start of each of your turns, you may put the lowest VP value card in your discard pile into your hand."},
+  {tier:2,name:"Chameleon Boy",type:"Super-Hero",set:"Crossover 3",effect:"Once per each of your turns: You may discard a card to Time Travel a card in the Line-Up with cost equal to or less than the discarded card."},
+  {tier:2,name:"Circe (Cost 9)",type:"Super-Villain",set:"Confrontations",effect:"You may put a Villain you buy or gain on top of any player's deck."},
+  {tier:2,name:"Cosmic Boy",type:"Super-Hero",set:"Crossover 3",effect:"Once per each of your turns: If the first card you play from your hand is an Equipment, give a card with cost 5 or less in the Line-Up Time Travel this turn."},
+  {tier:2,name:"Cyborg",type:"Super-Hero",set:"Rebirth",effect:"If you play 2 or more different Equipment during your turn, Move 1 and +2 Power."},
+  {tier:2,name:"Deathstroke",type:"Super-Villain",set:"Promo",effect:"Once per turn: When you destroy a card, draw a card."},
+  {tier:2,name:"Detective Chimp",type:"Super-Hero",set:"JLD",effect:"The first time you play an Equipment each turn, +1 Power and you may put a card you gain from the Line-Up this turn on top of your deck."},
+  {tier:2,name:"Doctor Fate",type:"Super-Hero",set:"Crossover 1",effect:"Once per each of your turn: If you played 2 or more cards with consecutive costs this turn, +1 Power. If 3 or more, draw a card."},
+  {tier:2,name:"Dr. Manhattan",type:"Super-Hero",set:"Crossover 4",effect:"The second time you play a Super Power during each of your turns, you may destroy a card in your hand."},
+  {tier:2,name:"Emperor Aquaman",type:"Super-Villain",set:"Kickstarter Crossover 10",effect:"Once per each of your turns: Reveal the top card of your deck, if it has cost 5 or greater, you may destroy a card in your hand or discard pile."},
+  {tier:2,name:"Felicity Smoak",type:"Super-Hero",set:"Crossover 2",effect:"If you play 2 or more Heroes during your turn, you may put the top card of the main deck under your Super Hero."},
+  {tier:2,name:"Felix Faust (Cost 15)",type:"Super-Villain",set:"Confrontations",effect:"Weakness cards you play have +1 Power. Confrontation: Once during your turn, draw a card for each player with one or more Weakness cards in their discard pile."},
+  {tier:2,name:"Flashpoint, Batman",type:"Super-Hero",set:"Crossover 10",effect:"The first time you play a Hero each turn, +1 Power, and you may put a card you gain from a Line-Up this turn on top of your deck."},
+  {tier:2,name:"Flashpoint, Captain Thunder",type:"Super-Hero",set:"Crossover 10",effect:"Once per each of your turns: You may discard a Starter. If you do, play the top card of your deck."},
+  {tier:2,name:"Flashpoint, Cyborg",type:"Super-Hero",set:"Crossover 10",effect:"You pay 1 less to buy a card in the main Line-Up with the same card type as the first card you played this turn."},
+  {tier:2,name:"Flashpoint, Green Lantern",type:"Super-Hero",set:"Crossover 10",effect:"Once per each of your turns: You may destroy a card in your hand with cost 3 or greater. If you do, you pay 4 less to buy the next card with the same card type."},
+  {tier:2,name:"Flashpoint, Superman",type:"Super-Hero",set:"Crossover 10",effect:"Once per each of your turns: If you generate at least 7 power, you may destroy a card you control."},
+  {tier:2,name:"Gorilla Grodd",type:"Super-Villain",set:"Promo",effect:"Once per each of your turns: You may discard a card. If you do, play a card in the Line-Up with that cost or 1 higher. Return it at end of turn."},
+  {tier:2,name:"Green Lantern (Jessica Cruz)",type:"Super-Hero",set:"Promo",effect:"At the start of your turn, if there are 4 or more cards with different types in your discard pile, draw a card."},
+  {tier:2,name:"Green Lantern (Cost 15)",type:"Super-Hero",set:"Rivals 2",effect:"Confrontation: Each time you play a Hero, reveal the top card of your deck. if it is a Construct or Defense, draw it."},
+  {tier:2,name:"Hal Jordan",type:"Super-Hero",set:"DNM",effect:"The second time you buy or gain a card from the Line-Up during each of your turns, you may destroy a starter you control."},
+  {tier:2,name:"Harley Quinn",type:"Super-Villain",set:"Arkham",effect:"Once per each of your turns: If there are 4 or more cards with different card types in your discard pile, you may draw 2 cards. If you do, discard 2 cards."},
+  {tier:2,name:"Harley Quinn, Crisis",type:"Super-Hero",set:"Crisis 5",effect:"You may buy Villains from any Ally's score pile. Each time you play a Weakness, you may destroy a card in the main Line-Up and replace it."},
+  {tier:2,name:"Hawkgirl, Crisis",type:"Super-Hero",set:"Crisis 5",effect:"Once per each of your turns: If you played 2 or more Equipment and/or METAL cards this turn, each Ally may reveal the top card of their deck."},
+  {tier:2,name:"Huntress",type:"Super-Hero",set:"Hush",effect:"Once per turn: If you played 2 or more different Villains this turn, Investigate. Then you may destroy a card in your hand."},
+  {tier:2,name:"Injustice, Sinestro",type:"Super-Villain",set:"Injustice, Promo",effect:"Each time you play a Villain, put a card with cost 0 from your discard pile into your hand. Discard 2 cards: Charge your Meter."},
+  {tier:2,name:"Kendra Saunders",type:"Super-Hero",set:"DNM",effect:"Once during each of your turns: If you control 2 or more Villains and/or Heroes, +2 Power."},
+  {tier:2,name:"Klarion",type:"Super-Villain",set:"JLDX",effect:"The first time you play a Villain each turn, look at the top card of your deck. Destroy it or return it."},
+  {tier:2,name:"Lex Luthor (Cost 15)",type:"Super-Villain",set:"Rivals 5",effect:"Confrontation: Once this turn: You may destroy a card with VP Value 1 or greater you control to reveal the top 3 cards of your deck. Put a revealed Villain and/or Equipment into your hand."},
+  {tier:2,name:"Mister Terrific",type:"Super-Hero",set:"Crossover 1",effect:"Once during each of your turns: You may discard a Punch. If you do, reveal the top 3 cards of your deck, draw 1 Equipment revealed this way."},
+  {tier:2,name:"Mr. Freeze",type:"Super-Villain",set:"Arkham",effect:"Once per turn: For each different Equipment you played this turn, you may put a card with cost 0 from your discard pile into your hand."},
+  {tier:2,name:"Nightwing",type:"Super-Hero",set:"Crisis 4",effect:"Once during each of your turns: If you control 3 or more non-Starter cards that share a card type, +1 Power and draw a card."},
+  {tier:2,name:"Nightwing",type:"Super-Hero",set:"Heroes Unite",effect:"The first time you play an Equipment during your turn, +1 Power. The second time, draw a card."},
+  {tier:2,name:"Nightwing",type:"Super-Hero",set:"Hush",effect:"When you gain a Super Power from the Line-Up, you may put it on top of your deck. Once per turn: If you played 2 or more different Super Powers this turn, Investigate."},
+  {tier:2,name:"Orion",type:"Super-Hero",set:"Crossover 3",effect:"Once during each of your turns: If you have 9+ Power, draw two cards."},
+  {tier:2,name:"Ozymandias",type:"Super-Hero",set:"Crossover 4",effect:"At the end of your turns, draw an extra card, and then put a card from your hand on top of your deck."},
+  {tier:2,name:"Papa Midnight",type:"Super-Villain",set:"JLDX",effect:"You pay 1 less to buy cards from the Line-Up that share a card type with a Sealed card."},
+  {tier:2,name:"Power Girl",type:"Super-Hero",set:"Crossover 1",effect:"Each time you play a different Super Power during your turn, put a Punch from your discard pile into your hand."},
+  {tier:2,name:"Raven",type:"Super-Hero",set:"Teen Titans",effect:"Once during each of your turns: If you control 2 or more Villains, put a Super Power from your discard pile into your hand."},
+  {tier:2,name:"Red Robin",type:"Super-Hero",set:"Teen Titans",effect:"Once during each of your turns: If you control two or more Heroes, +1 Power and put an Equipment from your discard pile into your hand."},
+  {tier:2,name:"Red Tornado",type:"Super-Hero",set:"Heroes Unite",effect:"Once during each of your turns: If there are four or more different card types in your discard pile, +2 Power."},
+  {tier:2,name:"Red Tornado, Crisis",type:"Super-Hero",set:"Crisis 2",effect:"If you play three or more cards with different types during your turn, you may choose a player. That player puts their deck into their discard pile."},
+  {tier:2,name:"Robin",type:"Super-Hero",set:"Shadows",effect:"You may put cards with cost 4 or less you gain from the Line-Up on top of your deck."},
+  {tier:2,name:"Robin",type:"Super-Hero",set:"Teen Titans Go",effect:"Once during each of your turns: If you control a Hero and an Equipment, +1 Power and draw a card."},
+  {tier:2,name:"Saint Walker",type:"Super-Hero",set:"Crisis 2",effect:"The first time you play a Hero during each of your turns, reveal the top card of your deck, and you may destroy it."},
+  {tier:2,name:"SHAZAM!",type:"Super-Hero",set:"Kickstarter Rivals 4",effect:"Discard a Super Power: Put up to 2 Heroes each with cost 5 or less from your discard pile into your hand."},
+  {tier:2,name:"Simon Baz",type:"Super-Hero",set:"Rebirth",effect:"Once during each of your turns: If you play 3 or more different card types, draw a card or move target Character 1 space."},
+  {tier:2,name:"Starfire",type:"Super-Hero",set:"Promo",effect:"Once during each of your turns: If there are no Super Powers in the Line-Up, draw a card."},
+  {tier:2,name:"Starfire",type:"Super-Hero",set:"Teen Titans",effect:"Once during each of your turns: If you control four different card types, you may destroy a card you control."},
+  {tier:2,name:"Starfire, Crisis",type:"Super-Hero",set:"Crisis 2",effect:"When you buy or gain a Super Power from the Line-Up, choose a player. That player may destroy a card in their hand."},
+  {tier:2,name:"Stargirl",type:"Super-Hero",set:"Crossover 1",effect:"When you play a Defense card during your turn or avoid an Attack, you may draw a card and then discard a card."},
+  {tier:2,name:"Stargirl",type:"Super-Hero",set:"Crossover 9",effect:"At the end of each of your turns, if you gained 3 or more cards, draw 2 extra cards."},
+  {tier:2,name:"Stargirl, Crisis",type:"Super-Hero",set:"XC1",effect:"You may put any Defense cards you gain on top of any player's deck."},
+  {tier:2,name:"Superboy",type:"Super-Hero",set:"Teen Titans",effect:"Once during each of your turns: If you control two or more different Super Powers, +1 Power and draw a card."},
+  {tier:2,name:"Supergirl",type:"Super-Hero",set:"Crossover 9",effect:"Each time you gain or play a card with cost 5 or greater during your turn, +1 Power."},
+  {tier:2,name:"Supergirl",type:"Super-Hero",set:"Promo",effect:"Once per turn: If you played a Hero and a Super Power this turn, put a different Super Power from your discard pile into your hand."},
+  {tier:2,name:"Superman (Cost 12)",type:"Super-Hero",set:"Rivals 5",effect:"Once per turn: If you played a Hero and a Super Power this turn, +1 Power and draw a card."},
+  {tier:2,name:"The Flash",type:"Super-Hero",set:"Base Set",effect:"You go first. The first time a card tells you to draw 1 or more cards during each of your turns, draw an additional card."},
+  {tier:2,name:"The Flash",type:"Super-Hero",set:"Crisis 4",effect:"Once during each of your turns: You may add the top card of the main deck to the Line-Up. You pay 1 less to buy that card this turn."},
+  {tier:2,name:"The Flash",type:"Super-Hero",set:"DNM",effect:"Once during each of your turns: When you play a Defense, draw a card."},
+  {tier:2,name:"The Flash (Cost 9)",type:"Super-Hero",set:"Rivals 3",effect:"You pay 1 less to buy your first Speedster card each turn. Discard a Super Power: Draw 2 cards, then discard 2 cards."},
+  {tier:2,name:"The Flash, Crisis",type:"Super-Hero",set:"Crisis 5",effect:"Once per turn: If you played a Super Power and Hero this turn, play the top card of the main deck. Then, destroy it unless you contribute it."},
+  {tier:2,name:"The Joker",type:"Super-Villain",set:"Arkham",effect:"Each time you destroy 1 or more cards, you may discard a card, if you do, draw a card."},
+  {tier:2,name:"The Joker (Cost 9)",type:"Super-Villain",set:"Rivals 1",effect:"At the end of your turn, draw an extra card if you bought or gained one or more Super Powers from the Line-Up during your turn."},
+  {tier:2,name:"The Joker (Cost 12)",type:"Super-Villain",set:"Rivals 1",effect:"Once during each of your turns: If you play a Villain and a Super power, reveal the top card of the main deck. Play it, and then return it."},
+  {tier:2,name:"Tim Drake",type:"Super-Hero",set:"Promo Arkham",effect:"Once per your turn: You pay 1 less to buy a Hero or Equipment from the Line-Up."},
+  {tier:2,name:"Vixen",type:"Super-Hero",set:"Rebirth 0S2",effect:"Once per turn: If you play 4 or more cards with different card types this turn: +1 Power and draw a card."},
+  {tier:2,name:"Wally West, Crisis",type:"Super-Hero",set:"Crisis 5",effect:"The first time you draw a card each turn, choose an Ally. The chosen Ally may discard a card. If they do, they draw a card."},
+  {tier:2,name:"Wonder Girl, Crisis",type:"Super-Hero",set:"Crisis 4",effect:"Once during each of your turns: if you control 2 or more Equipment, choose a player. That player may discard up to 2 cards, then draw that many cards."},
+  {tier:2,name:"Wonder Woman (Cost 9)",type:"Super-Hero",set:"Confrontations",effect:"The first time you buy or gain a Defense or Block card during each of your turns, you may destroy a card in your or your teammate's discard pile."},
+  {tier:2,name:"Wonder Woman, Crisis",type:"Super-Hero",set:"Crisis 1",effect:"When you buy or gain a Villain from the Line-Up, choose a player. That player may destroy a Vulnerability or Weakness in their hand or discard pile."},
+  {tier:2,name:"Zatanna",type:"Super-Hero",set:"Crossover 9",effect:"The first time any player avoids an Attack during each turn, look at the top card of your deck."},
+  {tier:2,name:"Zatanna",type:"Super-Hero",set:"JLD",effect:"The first time you play a Hero each turn, +1 Power. The first time you play a Super Power each turn, you may put a card from your discard pile on the bottom of your deck."},
+  {tier:2,name:"Zatanna Zatara (Cost 9)",type:"Super-Villain",set:"Confrontations",effect:"You may put each Hero you buy or gain on top of any player's deck."},
+  {tier:3,name:"Animal Man",type:"Super-Hero",set:"Crisis 1",effect:"Once during each of your turns: If you played three or more different card types, +2 Power."},
+  {tier:3,name:"Aquaman",type:"Super-Hero",set:"Base Set",effect:"You may put any cards with cost 5 or less you gain during your turn on top of your deck."},
+  {tier:3,name:"Aquaman",type:"Super-Hero",set:"DNM",effect:"Once during each of your turns: If you control 2 or more Villains and/or Super Powers, +1 Power, and you may put cards you gain this turn on top of your deck."},
+  {tier:3,name:"Arsenal",type:"Super-Hero",set:"Crisis 4",effect:"The first time you buy or gain a card from the Line-Up with the lowest cost during each of your turns, you may destroy a card in your discard pile."},
+  {tier:3,name:"Bane",type:"Super-Villain",set:"Forever Evil",effect:"If the first card you play during each of your turns has cost 1 or greater, you may destroy it. If you do, +2 Power."},
+  {tier:3,name:"Batman",type:"Super-Hero",set:"Base Set",effect:"+1 Power for each Equipment you play during your turn."},
+  {tier:3,name:"Batman",type:"Super-Hero",set:"Rebirth",effect:"Each time you avoid an Attack or defeat a Villain, target player reveals the top card of their deck and may destroy it."},
+  {tier:3,name:"Batwoman",type:"Super-Hero",set:"Crossover 9",effect:"Each time you play an Equipment, add the top card of the main deck to the Line-Up. If it is an Attack card, you may play it."},
+  {tier:3,name:"Bizzaro",type:"Super-Villain",set:"Forever Evil",effect:"When you destroy a card, gain a Weakness. During your turn, you may put 2 Weakness cards from your discard pile on top of the Weakness stack. If you do, draw a card."},
+  {tier:3,name:"Black Adam",type:"Super-Villain",set:"Forever Evil",effect:"The first time you play a Super Power during each of your turns, you may destroy it. If you do draw a card and gain 1 VP."},
+  {tier:3,name:"Black Adam (Cost 15)",type:"Super-Villain",set:"Kickstarter Rivals 4",effect:"Confrontation: Each time you play a different Super Power or Villain, reveal the top card of your deck. If the revealed card's cost is 5 or greater, draw it."},
+  {tier:3,name:"Captain Cold",type:"Super-Villain",set:"Crossover 5",effect:"The first time you buy a card with cost 3 or less from the Line-Up during each of your turns, you may Teamwork a foe."},
+  {tier:3,name:"Catwoman",type:"Super-Villain",set:"Promo Arkham",effect:"Once per turn: If you gained 2 or more cards from the Line-Up this turn, gain 1 VP."},
+  {tier:3,name:"Cheetah",type:"Super-Villain",set:"Crisis 3",effect:"At the end of each of your turns, if you bought or gained 2 or more cards during your turn, you may destroy a card in your discard pile or draw an extra card."},
+  {tier:3,name:"Cyborg",type:"Super-Hero",set:"Base Set",effect:"If you play 1 or more Super Powers during your turn, +1 Power. If you play 1 or more Equipment during your turn, draw a card."},
+  {tier:3,name:"Cyclone",type:"Super-Hero",set:"Promo Crossover 1",effect:"Each time you play a Hero, you may discard a Punch. If you do, draw a card."},
+  {tier:3,name:"Deathstroke",type:"Super-Villain",set:"Forever Evil",effect:"+1 Power for each card you destroy during your turn."},
+  {tier:3,name:"Doctor Fate",type:"Super-Hero",set:"DNM",effect:"Once during each of your turns: If you control 2 or more Heroes and/or Equipment, put up to 3 cards with cost 0 from your discard pile into your hand."},
+  {tier:3,name:"Doctor Fate, Crisis",type:"Super-Hero",set:"XC1",effect:"Each time you defeat a Villain, choose a player to draw a card."},
+  {tier:3,name:"Doctor Fate, Crisis",type:"Super-Hero",set:"Kickstarter Crisis 5",effect:"You pay 1 less to buy Villains in any Line-Up. Each time you gain a Villain from any Line-Up, you may resolve the Reward of a card in an Ally's score pile."},
+  {tier:3,name:"Donna Troy",type:"Super-Hero",set:"Crisis 4",effect:"You pay 1 less to buy Defense cards. Each time you avoid an Attack, you may destroy a card in your hand or discard pile."},
+  {tier:3,name:"Floronic Man",type:"Super-Villain",set:"JLDX",effect:"Each time you play a Super Power with cost 4+, you may choose a foe and Attack: Take control of a Location that foe controls until the end of the turn."},
+  {tier:3,name:"Granny Goodness",type:"Super-Villain",set:"Crossover 7",effect:"The second time you play a Villain during your turn, draw two cards, and then discard a card. The second time you play a Hero during your turn, +3 Power."},
+  {tier:3,name:"Green Arrow",type:"Super-Hero",set:"Crisis 1",effect:"Once during each of your turns, you may discard a Punch. If you do, you pay 2 less to defeat Villains and Super-Villains this turn."},
+  {tier:3,name:"Green Arrow",type:"Super-Hero",set:"Crossover 2",effect:"At the start of your turn, you may discard a card from your hand. If it's an Equipment, you may put it under your Super Hero."},
+  {tier:3,name:"Green Lantern",type:"Super-Hero",set:"Base Set",effect:"If you play 3 or more cards with different names and cost 1 or more during your turn, +3 Power."},
+  {tier:3,name:"Indigo-1",type:"Super-Hero",set:"Crisis 2",effect:"The first time you play a red-colored card during your turn, draw a card. The first time you play a blue-colored card during your turn, +1 Power."},
+  {tier:3,name:"Injustice, Harley Quinn",type:"Super-Hero",set:"Injustice",effect:"Once per turn: If you have played 3 or more cards with different types this turn, draw a card and Attack: Deal 2 damage to target foe."},
+  {tier:3,name:"Injustice, Hawkgirl",type:"Super-Villain",set:"Injustice",effect:"You may put Attack cards you gain on top of your deck. The first time you empty a foe's Health Bar each turn, draw a card."},
+  {tier:3,name:"Injustice, Yellow Lantern",type:"Super-Villain",set:"Injustice",effect:"Each time you gain a Hero, charge your Meter. Each time you play a Hero, you may discard a card. If you do, draw a card."},
+  {tier:3,name:"Kalibak",type:"Super-Villain",set:"Crossover 7",effect:"At the end of each of your turns, if you did not play any Starter cards, draw two additional cards into your new hand."},
+  {tier:3,name:"Killer Croc",type:"Super-Villain",set:"Arkham",effect:"The first time you play a Super Power during each of your turns, +1 Power. Once per turn: If you played a Villain this turn, you may destroy a card in the Line-Up and Surge."},
+  {tier:3,name:"Killer Frost",type:"Super-Villain",set:"Crisis 3",effect:"Once during each of your turns, you may pay 1 VP or discard a card with cost 1 or greater. If you do, play a card in the Line-Up with cost 4 or less, then destroy it."},
+  {tier:3,name:"King Shark",type:"Super-Villain",set:"Crisis 3",effect:"At the start of each of your turns, if you have 3 or fewer VPs, gain 1 VP. Pay 3 VPs: +1 Power."},
+  {tier:3,name:"Lex Luthor",type:"Super-Villain",set:"Forever Evil",effect:"At the end of your turn, draw an extra card for each Hero you bought or gained during your turn."},
+  {tier:3,name:"Lobo",type:"Super-Villain",set:"Promo",effect:"At the start of your turn, add the top card of the main deck to the Line-Up. If you buy that card this turn, you may destroy a Vulnerability or Weakness in your hand or discard pile."},
+  {tier:3,name:"Man-Bat",type:"Super-Hero",set:"JLD",effect:"The first time you play a Villain each turn, +1 Power. The first time you play an Equipment each turn, you may discard a card. If you do, draw a card."},
+  {tier:3,name:"Martin Manhunter",type:"Super-Hero",set:"Promo",effect:"If you play two or more Villains during your turn, +3 Power. If you play two or more Heroes during your turn, +3 Power."},
+  {tier:3,name:"Mirror Master",type:"Super-Villain",set:"Crossover 5",effect:"Each time you play a Hero, Villain, or Equipment, +1 Power if you have played another card with that cost this turn."},
+  {tier:3,name:"Mister Miracle",type:"Super-Hero",set:"Crossover 7",effect:"Each time you discard a card from your hand or deck, you may put it on top of your deck."},
+  {tier:3,name:"Nightwing",type:"Super-Hero",set:"Shadows",effect:"Once per turn: If you played a Super Power this turn, you may discard a card to draw a card. Once per turn: If you played 2 or more Equipment this turn, gain 1 VP."},
+  {tier:3,name:"Ocean Master (Cost 9)",type:"Super-Villain",set:"Confrontations",effect:"At the end of your turn, if you bought or gained two or more cards this turn, you may destroy a card you played this turn."},
+  {tier:3,name:"Peacemaker",type:"Super-Hero",set:"Peacemaker",effect:"You pay 1 less to buy Attack cards. Start of Your Turn: If there are no Attack cards in the Line-Up, you may discard a card to draw a card."},
+  {tier:3,name:"Queen Diana",type:"Super-Villain",set:"Kickstarter Crossover 10",effect:"When you buy a Super Power from a Line-Up, you may put it under this. At the end of your turn, you may put a Super Power under this on top of your deck."},
+  {tier:3,name:"Red Hood",type:"Super-Villain",set:"Shadows",effect:"End of Your Turn: If you control 4 or more cards with different card types, gain 1 VP."},
+  {tier:3,name:"Red Lantern Supergirl",type:"Super-Hero",set:"Crisis 2",effect:"The first time any foe destroys a card during each player's turn, you may draw a card and then discard a card."},
+  {tier:3,name:"Reverse-Flash (Cost 9)",type:"Super-Villain",set:"Rivals 3",effect:"The first time you play a Villain during your turn, destroy a card in the Line-Up and draw a card."},
+  {tier:3,name:"Rorschach",type:"Super-Hero",set:"Crossover 4",effect:"Once during each of your turns: You may discard a card from your hand to play the top card of another player's deck, and then return it."},
+  {tier:3,name:"Shazam!",type:"Super-Hero",set:"Heroes Unite",effect:"You may pay 4 Power. If you do, gain the top card of the main deck. You may put it on top of your deck or into your discard pile."},
+  {tier:3,name:"Shazam! (Cost 9)",type:"Super-Hero",set:"Kickstarter Rivals 4",effect:"Discard a Punch: Reveal the top 3 cards of your deck, draw a revealed Hero or Super Power with cost 4 or less."},
+  {tier:3,name:"Shazam! (Cost 15)",type:"Super-Hero",set:"Kickstarter Rivals 4",effect:"Confrontation: Each time you play a Super Power with cost X, you may put a Hero with cost less than X from your discard pile into your hand."},
+  {tier:3,name:"Sinestro (Cost 12)",type:"Super-Villain",set:"Rivals 2",effect:"+1 Power for each Attack you play. The first time one or more foes fail to avoid an Attack during each of your turns, draw a card."},
+  {tier:3,name:"Sinestro, Crisis",type:"Super-Villain",set:"Crisis 2",effect:"Each time you avoid an Attack, gain 1 VP. Pay 2 VPs: Choose an Attacked player. That player avoids that Attack."},
+  {tier:3,name:"Skitter",type:"Super-Hero",set:"Promo",effect:"Once during each of your turns: If you control four different cards with cost 1, 2, or 3, +3 Power."},
+  {tier:3,name:"Supergirl",type:"Super-Hero",set:"Promo",effect:"You may put Heroes and Super Powers you gain from the Line-Up on top of your deck."},
+  {tier:3,name:"Superman",type:"Super-Hero",set:"Base Set",effect:"+1 Power for each different Super Power you play during your turn."},
+  {tier:3,name:"Superman",type:"Super-Hero",set:"Rebirth",effect:"Once during your turns, +1 Power for each Villain you control."},
+  {tier:3,name:"Superman (Cost 9)",type:"Super-Hero",set:"Rivals 5",effect:"Each time you gain or play a Hero, you may reveal the top card of your deck. If it is a Super Power, draw it."},
+  {tier:3,name:"Superman (Cost 15)",type:"Super-Hero",set:"Rivals 5",effect:"Confrontation: Once this turn: Draw a card for every 2 Heroes and/or Super Powers you played this turn."},
+  {tier:3,name:"Swamp Thing",type:"Super-Hero",set:"Crisis 1",effect:"During your turn, you are considered to control each Location in the Line-Up and in play."},
+  {tier:3,name:"Swamp Thing",type:"Super-Hero",set:"JLD",effect:"Discard a non-Weakness card: Surge. Once per each of your turns: If you control 2+ Locations, draw a card."},
+  {tier:3,name:"The Atom",type:"Super-Hero",set:"Rebirth 0S2",effect:"The first time you play a card with cost 1, 2, or 3 each turn, you may put a different card with cost 1, 2, or 3 from your discard pile into your hand."},
+  {tier:3,name:"The Flash (Cost 12)",type:"Super-Hero",set:"Rivals 3",effect:"+1 Power for each Hero you play. The second time you play a Super Power each turn, put the top card of the main deck into the Line-Up."},
+  {tier:3,name:"The Joker",type:"Super-Villain",set:"Promo",effect:"Once during each of your turns: You may destroy a Villain you have played this turn. If you do, draw a card and Attack: Each foe gains a Weakness."},
+  {tier:3,name:"The Penguin",type:"Super-Villain",set:"Arkham",effect:"Each time you gain a Villain from the Line-Up, look at the top card of your deck. Once per each of your turns: If you have played a Villain this turn, you may discard a card to draw a card."},
+  {tier:3,name:"Trickster",type:"Super-Villain",set:"Crossover 5",effect:"Each time you would shuffle your discard pile, you may leave one of those cards in your discard pile."},
+  {tier:3,name:"Vixen",type:"Super-Hero",set:"Promo",effect:"Once during each of your turns: You may reveal the top card of your deck. Hero: +2 Power; Villain: Destroy a card in your hand; Equipment: pay 3 less to defeat Nemesis; Super Power: Draw a card."},
+  {tier:3,name:"Weather Wizard",type:"Super-Villain",set:"Crossover 5",effect:"Discard two cards: Draw a card. Teamwork: That foe gains 1 VP."},
+  {tier:3,name:"Wildcat",type:"Super-Hero",set:"Crossover 1",effect:"The first time you play a Punch during each of your turns: If you have played a Hero this turn, draw a card. If you have played a Villain this turn, draw a card."},
+  {tier:3,name:"Wonder Woman",type:"Super-Hero",set:"Base Set",effect:"For each Villain you gain during your turn draw an extra card at the end of your turn."},
+  {tier:3,name:"Wonder Woman",type:"Super-Hero",set:"DNM",effect:"Once during each of your turns: If you control 2 or more Equipment and/or Super Powers, draw 2 cards, then discard 2 cards."},
+  {tier:3,name:"Wonder Woman (Cost 12)",type:"Super-Hero",set:"Confrontations",effect:"+1 Power for each Defense and Block card you play during your turn. Once during a Confrontation, you may discard a Defense card to add 2 to a Character's cost."},
+  {tier:3,name:"Wonder Woman",type:"Super-Hero",set:"Crossover 9",effect:"Discard 2 different cards: Double the Power of the next card you play this turn. Use only once per turn."},
+  {tier:3,name:"Zatanna Zatara (Cost 12)",type:"Super-Hero",set:"Confrontations",effect:"Once during each of your turns: You may look at the top two cards of your deck, discard any number of them, and put the rest back on top in any order."},
+  {tier:4,name:"Aquaman (Cost 9)",type:"Super-Hero",set:"Confrontations",effect:"The first time you buy a card from the Line-Up during each of your turns, gain a card of that card type and lower cost from the Line-Up."},
+  {tier:4,name:"Aquaman (Cost 12)",type:"Super-Hero",set:"Confrontations",effect:"Once during each of your turns: +1 Power for every seven cards in your discard pile."},
+  {tier:4,name:"Arsenal",type:"Super-Hero",set:"Crossover 2",effect:"Once during each of your turns: You may put a Super Power from the Line-Up under your Super Hero. At the start of your turn, if there are 4 or more cards under your Super Hero +2 Power."},
+  {tier:4,name:"Beast Boy",type:"Super-Hero",set:"Teen Titans Go",effect:"Each time you play a Super Power, you may discard a card. If you do, draw a card."},
+  {tier:4,name:"Booster Gold",type:"Super-Hero",set:"Heroes Unite",effect:"+1 Power for each Defense card you play during your turn. When you avoid an Attack, draw a card."},
+  {tier:4,name:"Darkseid",type:"Super-Villain",set:"Crossover 7",effect:"Once during each of your turns: You may destroy a card with cost 1 or greater in your hand or discard pile. If you do +2 Power and draw a card."},
+  {tier:4,name:"Enchantress",type:"Super-Villain",set:"JLDX",effect:"Each time you Seal a Hero, +1 Power. Once per turn: Seal a card from the Line-Up with cost less than the cost of a Super Power or Equipment you played this turn."},
+  {tier:4,name:"Felix Faust (Cost 9)",type:"Super-Villain",set:"Confrontations",effect:"Once during each of your turns: You may gain a Weakness from the weakness stack. If you do, +2 Power."},
+  {tier:4,name:"Harley Quinn",type:"Super-Villain",set:"Forever Evil",effect:"During each player's turn, the first time you pass a card or discard a card, draw a card."},
+  {tier:4,name:"Heat Wave",type:"Super-Villain",set:"Crossover 5",effect:"The first time you destroy a card with cost 2 or greater during each of your turns, put the top card of the main deck on top of your deck."},
+  {tier:4,name:"Injustice, Batman",type:"Super-Hero",set:"Injustice",effect:"The first time you discard or play a Defense Card each turn, charge your Meter. Once per each of your turns: Put a card with cost 4 or less from your discard pile on top of your deck."},
+  {tier:4,name:"John Constantine",type:"Super-Hero",set:"JLD",effect:"The first time you play a non-Starter card each turn, you may Seal it. If you do, draw a card."},
+  {tier:4,name:"Oracle",type:"Super-Hero",set:"Shadows",effect:"Once per turn: If you played a Hero this turn, reveal the top card of your deck. If it is a Hostage, draw it. Otherwise, gain VP equal to the revealed card's VP value."},
+  {tier:4,name:"Ragman",type:"Super-Hero",set:"JLD",effect:"Each time you Seal a Villain, +1 Power. Once per turn: Seal a card from the Line-Up with cost less than the cost of a Hero or Equipment you played this turn."},
+  {tier:4,name:"Sinestro",type:"Super-Villain",set:"Forever Evil",effect:"When one or more foes fail to avoid an Attack you play, gain 1 VP. The first time you gain VPs during each of your turns, draw a card."},
+  {tier:4,name:"Swamp Thing, Crisis",type:"Super-Hero",set:"Crisis 5",effect:"Each time you gain a non-Villain card, you may Contribute it. Once per turn: Gain a card with cost less than or equal to the number of different card types among cards you control."},
+  {tier:4,name:"The Batman Who Laughs",type:"Super-Villain",set:"Promo",effect:"You may gain a Weakness cards from the destroyed pile. At the start of your turn, you may gain a Weakness. If you do, play the top card of the main deck. Then, destroy it."},
+  {tier:4,name:"Vigilante",type:"Super-Hero",set:"Peacemaker",effect:"The first time you play an Equipment each turn +1 Power and you may destroy a card in the Line-Up to Surge. The second time you play an Equipment each turn, you may gain a Villain with cost 5 or less."},
+  {tier:4,name:"Witch-Marked Circe",type:"Super-Villain",set:"JLDX",effect:"Each time you Seal a Super Power +1 Power. Once per turn: Seal a card from the Line-Up with cost less than the cost of a Hero or Villain you played this turn."},
+  {tier:4,name:"White Lantern Sinestro, Crisis",type:"Super-Hero",set:"Promo",effect:"Each time you destroy a card, you may discard 2 cards. If you do, gain the destroyed card and put it into your hand."},
+  {tier:4,name:"Wonder Woman",type:"Super-Hero",set:"JLD",effect:"Each time you Seal an Equipment, +1 Power. Once per turn: Seal a card from the Line-Up with cost less than the cost of a Villain or Super Power you played this turn."},
+  {tier:4,name:"Wonder Woman (Cost 15)",type:"Super-Hero",set:"Confrontations",effect:"Confrontation: Each time you play a Defense or Block card this turn, draw a card."},
+  {tier:5,name:"Aquaman (Cost 15)",type:"Super-Hero",set:"Confrontations",effect:"Confrontation: Once during your turn, +2 Power for every seven cards in your discard pile."},
+  {tier:5,name:"Batman [Earth -52]",type:"Super-Villain",set:"Crossover 11",effect:"Once per turn: +1 Power for each time you drew 1 or more cards this turn."},
+  {tier:5,name:"Brainiac",type:"Super-Villain",set:"Promo",effect:"You may buy cards from the destroyed pile. Once per your turn: If there are no cards in your discard pile, destroy the top 2 cards of the main deck."},
+  {tier:5,name:"Reverse-Flash (Cost 12)",type:"Super-Villain",set:"Rivals 3",effect:"Once per each of your turns: Play a card from the destroyed pile with VP value less than the number of Villains you control. Then, destroy that card."},
+  {tier:5,name:"Superman (Cost 15)",type:"Super-Hero",set:"Confrontations",effect:"Each time you or your teammate declares a Confrontation, draw up to two cards, and then discard that many cards."},
+  {tier:5,name:"Plastic Man",type:"Super-Hero",set:"DNM",effect:"Once during each of your turns: You may have the next card you play gain a type or subtype of your choice until the end of your turn."},
+  {tier:6,name:"Batman (Cost 15)",type:"Super-Hero",set:"Rivals 1",effect:"Confrontation: +1 Power for each Equipment and for each Hero you play."},
+  {tier:6,name:"Black Adam, Crisis",type:"Super-Villain",set:"Crisis 3",effect:"Each time you destroy a card (including Villains in the Line-Up), choose a player. That player gains 1 VP."},
+  {tier:6,name:"Lex Luthor (Cost 12)",type:"Super-Villain",set:"Rivals 5",effect:"You pay 1 less to buy Villains and Equipment from the Line-Up. Each time you gain a Villain or Equipment from the Line-Up, you may put it on the bottom of your deck."},
+  {tier:6,name:"Golden Glider",type:"Super-Villain",set:"Crossover 5",effect:"Each time you play a card you don't own, draw a card. Teamwork: That foe gains 1 VP."},
+  {tier:6,name:"Mister Terrific",type:"Super-Hero",set:"DNM",effect:"Once during each of your turns: You may gain a Weakness and put it into your hand. If you do, draw 2 cards."},
+  {tier:6,name:"The Joker (Cost 15)",type:"Super-Villain",set:"Confrontations",effect:"Confrontation: +1 Power for each Villain and for each Super Power you play."},
+  {tier:6,name:"Ocean Master (Cost 12)",type:"Super-Villain",set:"Confrontations",effect:"Once during each of your turns, you may put a card with cost 3 or less from your discard pile into your hand."},
+];
+
+let selected = [];
+let typeFilter = 'all';
+let exportOpen = false;
+
+function totalUsed() { return selected.reduce((s,c)=>s+c.tier,0); }
+function canAdd(c) { return totalUsed()+c.tier<=6; }
+function isSelected(c) { return selected.some(s=>s.name===c.name&&s.set===c.set&&s.tier===c.tier); }
+
+function toggleCard(card) {
+  const idx = selected.findIndex(s=>s.name===card.name&&s.set===card.set&&s.tier===card.tier);
+  if (idx>=0) selected.splice(idx,1);
+  else if (canAdd(card)) selected.push(card);
+  render();
+}
+
+function clearAll() { selected=[]; exportOpen=false; document.getElementById('export-panel').style.display='none'; render(); }
+function setFilter(f) { typeFilter=f; render(); }
+
+function buildExportText() {
+  const line = (n) => '='.repeat(n);
+  const dash = (n) => '-'.repeat(n);
+  const rows = [];
+  rows.push('DC DECKBUILDING GAME — MAIN CHARACTER SELECTION');
+  rows.push(line(50));
+  rows.push('');
+  rows.push(`Budget used : ${totalUsed()} / 6`);
+  rows.push(`Characters  : ${selected.length}`);
+  rows.push('');
+  rows.push(dash(50));
+  selected.forEach((c,i) => {
+    rows.push('');
+    rows.push(`${i+1}. ${c.name}  [Tier ${c.tier}]`);
+    rows.push(`   Type   : ${c.type}`);
+    rows.push(`   Set    : ${c.set}`);
+    rows.push(`   Effect : ${c.effect}`);
+  });
+  rows.push('');
+  rows.push(dash(50));
+  rows.push(`Generated: ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}`);
+  return rows.join('\n');
+}
+
+function toggleExport() {
+  if (!selected.length) return;
+  exportOpen = !exportOpen;
+  const panel = document.getElementById('export-panel');
+  if (exportOpen) {
+    document.getElementById('export-text').value = buildExportText();
+    panel.style.display = 'block';
+    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+  } else {
+    panel.style.display = 'none';
+  }
+  resetCopyBtn();
+}
+
+function resetCopyBtn() {
+  const b = document.getElementById('copy-btn');
+  if (b) { b.textContent='Copy to clipboard'; b.classList.remove('btn-copy-success'); }
+}
+
+function copyText() {
+  navigator.clipboard.writeText(document.getElementById('export-text').value).then(()=>{
+    const b = document.getElementById('copy-btn');
+    b.textContent='Copied!'; b.classList.add('btn-copy-success');
+    setTimeout(resetCopyBtn, 2000);
+  });
+}
+
+function downloadText() {
+  const text = document.getElementById('export-text').value;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text],{type:'text/plain'}));
+  a.download = 'dc_deckbuilding_selection.txt';
+  a.click();
+}
+
+function render() {
+  const used = totalUsed();
+  const pct = Math.round((used/6)*100);
+  const fill = document.getElementById('budget-fill');
+  const num = document.getElementById('budget-num');
+  const fillColor = used===6?'#c41a1a':used>=4?'#a06010':'#1e6b4a';
+  fill.style.width = pct+'%';
+  fill.style.background = fillColor;
+  num.textContent = `${used} / 6`;
+  num.style.color = used===6?'#f54040':'#e8ecf4';
+
+  document.getElementById('clear-btn').disabled = selected.length===0;
+  document.getElementById('export-btn').disabled = selected.length===0;
+
+  // chips
+  const bar = document.getElementById('selected-bar');
+  if (!selected.length) {
+    bar.innerHTML = '<span class="empty-msg">No characters selected — choose characters until you reach tier 6.</span>';
+  } else {
+    bar.innerHTML = selected.map((c,i)=>{
+      const col = TIER_COLORS[c.tier];
+      return `<div class="chip" style="background:${col.bg};color:${col.color};border-color:${col.border}" onclick="toggleCard(selected_ref[${i}])">
+        ${c.name} <span style="font-size:10px;opacity:0.6">(T${c.tier})</span><span class="chip-remove">✕</span>
+      </div>`;
+    }).join('');
+    // expose a ref array for onclick
+    window.selected_ref = selected;
+  }
+
+  // filters
+  ['f-all','f-hero','f-villain'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById(typeFilter==='hero'?'f-hero':typeFilter==='villain'?'f-villain':'f-all').classList.add('active');
+
+  // update export live if open
+  if (exportOpen && selected.length) document.getElementById('export-text').value = buildExportText();
+
+  const q = document.getElementById('search').value.toLowerCase();
+  const main = document.getElementById('main-content');
+  main.innerHTML = '';
+
+  [1,2,3,4,5,6].forEach(tier=>{
+    let cards = DATA.filter(c=>c.tier===tier);
+    if (typeFilter==='hero') cards=cards.filter(c=>c.type==='Super-Hero');
+    if (typeFilter==='villain') cards=cards.filter(c=>c.type==='Super-Villain');
+    if (q) cards=cards.filter(c=>c.name.toLowerCase().includes(q)||c.set.toLowerCase().includes(q)||c.effect.toLowerCase().includes(q));
+    if (!cards.length) return;
+
+    const col = TIER_COLORS[tier];
+    const sec = document.createElement('div');
+    sec.className='tier-section';
+
+    const hdg = document.createElement('div');
+    hdg.className='tier-heading';
+    hdg.innerHTML=`
+      <span class="tier-pill" style="color:${col.color};border-color:${col.border};background:${col.bg}">Tier ${tier}</span>
+      <div class="tier-rule"></div>
+      <span class="tier-count">${cards.length} card${cards.length!==1?'s':''}</span>`;
+    sec.appendChild(hdg);
+
+    const grid = document.createElement('div');
+    grid.className='card-grid';
+
+    cards.forEach(card=>{
+      const sel = isSelected(card);
+      const dis = !sel && !canAdd(card);
+      const typeStyle = card.type==='Super-Hero'
+        ? 'background:#0b2340;color:#5ba3f5'
+        : 'background:#3d0808;color:#f07070';
+
+      const div = document.createElement('div');
+      div.className='mc-card'+(sel?' selected':'')+(dis?' disabled':'');
+      if (sel) {
+        div.style.setProperty('--selected-color', col.color);
+        div.style.setProperty('--selected-bg', col.bg);
+      }
+      div.innerHTML=`
+        <div class="selected-check">✓</div>
+        <div class="card-top">
+          <div class="mc-name">${card.name}</div>
+          <span class="mc-type-badge" style="${typeStyle}">${card.type==='Super-Hero'?'Hero':'Villain'}</span>
+        </div>
+        <div class="mc-set">${card.set}</div>
+        <div class="mc-effect">${card.effect}</div>`;
+      if (!dis) div.onclick=()=>toggleCard(card);
+      grid.appendChild(div);
+    });
+
+    sec.appendChild(grid);
+    main.appendChild(sec);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
