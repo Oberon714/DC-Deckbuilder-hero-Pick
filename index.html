@@ -479,8 +479,9 @@ function render() {
         ? 'background:#0b2340;color:#5ba3f5'
         : 'background:#3d0808;color:#f07070';
 
+      const typeClass = card.type==='Super-Hero' ? ' hero-card' : ' villain-card';
       const div = document.createElement('div');
-      div.className='mc-card'+(sel?' selected':'')+(dis?' disabled':'');
+      div.className='mc-card'+typeClass+(sel?' selected':'')+(dis?' disabled':'');
       if (sel) {
         div.style.setProperty('--selected-color', col.color);
         div.style.setProperty('--selected-bg', col.bg);
